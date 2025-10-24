@@ -2,5 +2,5 @@ services:
   - type: web
     name: freshdesk-mcp-server
     env: node
-    buildCommand: npm install && npm run build
+    buildCommand: npm install && npx tsc
     startCommand: node dist/index.js
