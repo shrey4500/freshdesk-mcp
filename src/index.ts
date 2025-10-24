@@ -84,7 +84,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   if (request.params.name === "create_ticket") {
-    const args = request.params.arguments as CreateTicketArgs;
+    const args = request.params.arguments as any as CreateTicketArgs;
 
     try {
       const response = await axios.post(
