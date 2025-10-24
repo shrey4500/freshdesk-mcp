@@ -117,6 +117,33 @@ app.post('/mcp', async (req, res) => {
       });
     }
 
+    // Handle initialize handshake
+    if (request.method === 'initialize') {
+      console.log('🤝 Initialize handshake received');
+      const response = {
+        jsonrpc: '2.0',
+        id: request.id,
+        result: {
+          protocolVersion: '2025-03-26',
+          capabilities: {
+            tools: {},
+          },
+          serverInfo: {
+            name: 'freshdesk-mcp-server',
+            version: '1.0.0',
+          },
+        },
+      };
+      console.log('✅ Sending initialize response');
+      return res.json(response);
+    }
+
+    // Handle notifications/initialized
+    if (request.method === 'notifications/initialized') {
+      console.log('✅ Initialized notification received');
+      return res.status(200).end();
+    }
+
     if (request.method === 'tools/list') {
       console.log('📋 Returning tools list');
       const response = {
