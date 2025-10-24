@@ -31,6 +31,7 @@ const server = new Server(
 );
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
+  console.error("ListTools request received");
   return {
     tools: [
       {
@@ -83,8 +84,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 });
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  console.error("CallTool request received:", request.params.name);
+  
   if (request.params.name === "create_ticket") {
     const args = request.params.arguments as any as CreateTicketArgs;
+    console.error("Creating ticket with domain:", args.freshdesk_domain);
 
     try {
       const response = await axios.post(
@@ -108,6 +112,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
       );
 
+      console.error("Ticket created successfully, ID:", response.data.id);
       return {
         content: [
           {
@@ -117,6 +122,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         ],
       };
     } catch (error: any) {
+      console.error("Error creating ticket:", error.message);
       return {
         content: [
           {
@@ -133,12 +139,46 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 async function main() {
+  console.error("=== MCP Server Starting ===");
+  console.error("Node version:", process.version);
+  console.error("Platform:", process.platform);
+  console.error("CWD:", process.cwd());
+  console.error("Stdin is TTY:", process.stdin.isTTY);
+  console.error("Stdout is TTY:", process.stdout.isTTY);
+  console.error("Environment:", process.env.NODE_ENV || "not set");
+  
+  // Keep process alive
+  console.error("Setting up keep-alive interval...");
+  setInterval(() => {
+    console.error(`[${new Date().toISOString()}] Server still running...`);
+  }, 30000);
+  
+  console.error("Creating StdioServerTransport...");
   const transport = new StdioServerTransport();
+  
+  console.error("Connecting server to transport...");
   await server.connect(transport);
-  console.error("Freshdesk MCP Server running on stdio");
+  
+  console.error("=== Freshdesk MCP Server running on stdio ===");
+  console.error("Waiting for connections...");
+  
+  // Prevent exit
+  process.stdin.resume();
+  
+  // Log any data received
+  process.stdin.on('data', (data) => {
+    console.error("Received stdin data:", data.toString());
+  });
+  
+  process.stdin.on('end', () => {
+    console.error("Stdin ended");
+  });
 }
 
 main().catch((error) => {
-  console.error("Server error:", error);
+  console.error("=== Server error ===");
+  console.error("Error name:", error.name);
+  console.error("Error message:", error.message);
+  console.error("Error stack:", error.stack);
   process.exit(1);
 });
