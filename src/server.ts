@@ -50,50 +50,106 @@ app.get('/', (req, res) => {
   });
 });
 
-app.get('/tools', (req, res) => {
-  console.log('✅ Tools list endpoint hit');
-  res.json({
-    tools: [
-      {
-        name: "create_ticket",
-        description: "Creates a new ticket in Freshdesk",
-        inputSchema: {
-          type: "object",
-          properties: {
-            freshdesk_domain: {
-              type: "string",
-              description: "Your Freshdesk domain (e.g., yourcompany.freshdesk.com)",
-            },
-            freshdesk_api_key: {
-              type: "string",
-              description: "Your Freshdesk API key",
-            },
-            subject: {
-              type: "string",
-              description: "Subject of the ticket",
-            },
-            description: {
-              type: "string",
-              description: "Description/content of the ticket",
-            },
-            email: {
-              type: "string",
-              description: "Email of the requester",
-            },
-            priority: {
-              type: "number",
-              description: "Priority: 1-Low, 2-Medium, 3-High, 4-Urgent",
-            },
-            status: {
-              type: "number",
-              description: "Status: 2-Open, 3-Pending, 4-Resolved, 5-Closed",
-            },
-          },
-          required: ["freshdesk_domain", "freshdesk_api_key", "subject", "description", "email"],
+const TOOLS_DEFINITION = [
+  {
+    name: "get_groups",
+    description: "Get all groups in the Freshdesk account. Use this to find the group_id before creating or assigning tickets.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        freshdesk_domain: {
+          type: "string",
+          description: "Your Freshdesk domain (e.g., yourcompany.freshdesk.com)",
+        },
+        freshdesk_api_key: {
+          type: "string",
+          description: "Your Freshdesk API key",
         },
       },
-    ],
-  });
+      required: ["freshdesk_domain", "freshdesk_api_key"],
+    },
+  },
+  {
+    name: "create_ticket",
+    description: "Creates a new ticket in Freshdesk. Optionally assign to a group during creation.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        freshdesk_domain: {
+          type: "string",
+          description: "Your Freshdesk domain (e.g., yourcompany.freshdesk.com)",
+        },
+        freshdesk_api_key: {
+          type: "string",
+          description: "Your Freshdesk API key",
+        },
+        subject: {
+          type: "string",
+          description: "Subject of the ticket",
+        },
+        description: {
+          type: "string",
+          description: "Description/content of the ticket",
+        },
+        email: {
+          type: "string",
+          description: "Email of the requester",
+        },
+        priority: {
+          type: "number",
+          description: "Priority: 1-Low, 2-Medium, 3-High, 4-Urgent",
+        },
+        status: {
+          type: "number",
+          description: "Status: 2-Open, 3-Pending, 4-Resolved, 5-Closed",
+        },
+        group_id: {
+          type: "number",
+          description: "Group ID to assign the ticket to. Use get_groups to find the group_id first.",
+        },
+        responder_id: {
+          type: "number",
+          description: "Agent ID to assign the ticket to (optional)",
+        },
+      },
+      required: ["freshdesk_domain", "freshdesk_api_key", "subject", "description", "email"],
+    },
+  },
+  {
+    name: "assign_ticket",
+    description: "Assign an existing Freshdesk ticket to an agent or group",
+    inputSchema: {
+      type: "object",
+      properties: {
+        freshdesk_domain: {
+          type: "string",
+          description: "Your Freshdesk domain (e.g., yourcompany.freshdesk.com)",
+        },
+        freshdesk_api_key: {
+          type: "string",
+          description: "Your Freshdesk API key",
+        },
+        ticket_id: {
+          type: "number",
+          description: "The ID of the ticket to assign",
+        },
+        responder_id: {
+          type: "number",
+          description: "The agent ID to assign the ticket to (optional if group_id is provided)",
+        },
+        group_id: {
+          type: "number",
+          description: "The group ID to assign the ticket to (optional if responder_id is provided)",
+        },
+      },
+      required: ["freshdesk_domain", "freshdesk_api_key", "ticket_id"],
+    },
+  },
+];
+
+app.get('/tools', (req, res) => {
+  console.log('✅ Tools list endpoint hit');
+  res.json({ tools: TOOLS_DEFINITION });
 });
 
 app.post('/mcp', async (req, res) => {
@@ -150,25 +206,7 @@ app.post('/mcp', async (req, res) => {
         jsonrpc: '2.0',
         id: request.id,
         result: {
-          tools: [
-            {
-              name: "create_ticket",
-              description: "Creates a new ticket in Freshdesk",
-              inputSchema: {
-                type: "object",
-                properties: {
-                  freshdesk_domain: { type: "string", description: "Your Freshdesk domain" },
-                  freshdesk_api_key: { type: "string", description: "Your Freshdesk API key" },
-                  subject: { type: "string", description: "Subject of the ticket" },
-                  description: { type: "string", description: "Description/content" },
-                  email: { type: "string", description: "Email of the requester" },
-                  priority: { type: "number", description: "Priority: 1-4" },
-                  status: { type: "number", description: "Status: 2-5" },
-                },
-                required: ["freshdesk_domain", "freshdesk_api_key", "subject", "description", "email"],
-              },
-            },
-          ],
+          tools: TOOLS_DEFINITION,
         },
       };
       console.log('✅ Sending tools list response');
@@ -179,30 +217,23 @@ app.post('/mcp', async (req, res) => {
       console.log('🔧 Tool call:', name);
       console.log('Arguments:', JSON.stringify(args, null, 2));
 
-      if (name === 'create_ticket') {
-        console.log('📞 Creating Freshdesk ticket...');
-        console.log('Domain:', args?.freshdesk_domain);
-        console.log('Email:', args?.email);
-        
-        const apiKey = args?.freshdesk_api_key;
-        const authString = Buffer.from(apiKey + ':X').toString('base64');
+      const apiKey = args?.freshdesk_api_key;
+      const domain = args?.freshdesk_domain;
+      const authString = Buffer.from(apiKey + ':X').toString('base64');
+
+      if (name === 'get_groups') {
+        console.log('👥 Fetching Freshdesk groups...');
+        console.log('Domain:', domain);
         
         console.log('Making API call to Freshdesk...');
         const response = await fetch(
-          `https://${args.freshdesk_domain}/api/v2/tickets`,
+          `https://${domain}/api/v2/groups`,
           {
-            method: 'POST',
+            method: 'GET',
             headers: {
               'Authorization': `Basic ${authString}`,
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-              subject: args.subject,
-              description: args.description,
-              email: args.email,
-              priority: args.priority || 1,
-              status: args.status || 2,
-            }),
           }
         );
 
@@ -220,6 +251,91 @@ app.post('/mcp', async (req, res) => {
         
         console.log('✅ Sending success response');
         return res.json(result);
+
+      } else if (name === 'create_ticket') {
+        console.log('📞 Creating Freshdesk ticket...');
+        console.log('Domain:', domain);
+        console.log('Email:', args?.email);
+        console.log('Group ID:', args?.group_id);
+        
+        const payload: any = {
+          subject: args.subject,
+          description: args.description,
+          email: args.email,
+          priority: args.priority || 1,
+          status: args.status || 2,
+        };
+        
+        if (args.group_id) payload.group_id = args.group_id;
+        if (args.responder_id) payload.responder_id = args.responder_id;
+        
+        console.log('Making API call to Freshdesk...');
+        const response = await fetch(
+          `https://${domain}/api/v2/tickets`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Basic ${authString}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+          }
+        );
+
+        console.log('Freshdesk API Status:', response.status);
+        const data = await response.json();
+        console.log('Freshdesk Response:', JSON.stringify(data, null, 2));
+        
+        const result = {
+          jsonrpc: '2.0',
+          id: request.id,
+          result: {
+            content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+          },
+        };
+        
+        console.log('✅ Sending success response');
+        return res.json(result);
+        
+      } else if (name === 'assign_ticket') {
+        console.log('👤 Assigning Freshdesk ticket...');
+        console.log('Domain:', domain);
+        console.log('Ticket ID:', args?.ticket_id);
+        console.log('Responder ID:', args?.responder_id);
+        console.log('Group ID:', args?.group_id);
+        
+        const updatePayload: any = {};
+        if (args.responder_id) updatePayload.responder_id = args.responder_id;
+        if (args.group_id) updatePayload.group_id = args.group_id;
+        
+        console.log('Making API call to Freshdesk...');
+        const response = await fetch(
+          `https://${domain}/api/v2/tickets/${args.ticket_id}`,
+          {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Basic ${authString}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(updatePayload),
+          }
+        );
+
+        console.log('Freshdesk API Status:', response.status);
+        const data = await response.json();
+        console.log('Freshdesk Response:', JSON.stringify(data, null, 2));
+        
+        const result = {
+          jsonrpc: '2.0',
+          id: request.id,
+          result: {
+            content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+          },
+        };
+        
+        console.log('✅ Sending success response');
+        return res.json(result);
+        
       } else {
         console.log('❌ Unknown tool:', name);
         return res.status(400).json({
@@ -282,6 +398,10 @@ app.listen(PORT, () => {
   console.log(`   🔗 MCP Endpoint: /mcp`);
   console.log(`   💚 Health: /`);
   console.log(`   🔧 Tools: /tools`);
+  console.log(`   📊 Total Tools: 3`);
+  console.log('   🔹 get_groups - Fetch all groups');
+  console.log('   🔹 create_ticket - Create ticket (with optional group assignment)');
+  console.log('   🔹 assign_ticket - Assign existing ticket');
   console.log('═══════════════════════════════════════════');
   console.log('');
 });
