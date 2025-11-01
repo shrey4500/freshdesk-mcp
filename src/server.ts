@@ -70,6 +70,50 @@ const TOOLS_DEFINITION = [
     },
   },
   {
+    name: "get_ticket",
+    description: "Get detailed information about a specific Freshdesk ticket by ticket ID.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        freshdesk_domain: {
+          type: "string",
+          description: "Your Freshdesk domain (e.g., yourcompany.freshdesk.com)",
+        },
+        freshdesk_api_key: {
+          type: "string",
+          description: "Your Freshdesk API key",
+        },
+        ticket_id: {
+          type: "number",
+          description: "The ID of the ticket to retrieve",
+        },
+      },
+      required: ["freshdesk_domain", "freshdesk_api_key", "ticket_id"],
+    },
+  },
+  {
+    name: "get_agent",
+    description: "Get detailed information about a specific Freshdesk agent by agent ID.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        freshdesk_domain: {
+          type: "string",
+          description: "Your Freshdesk domain (e.g., yourcompany.freshdesk.com)",
+        },
+        freshdesk_api_key: {
+          type: "string",
+          description: "Your Freshdesk API key",
+        },
+        agent_id: {
+          type: "number",
+          description: "The ID of the agent to retrieve",
+        },
+      },
+      required: ["freshdesk_domain", "freshdesk_api_key", "agent_id"],
+    },
+  },
+  {
     name: "create_ticket",
     description: "Creates a new ticket in Freshdesk. Optionally assign to a group during creation.",
     inputSchema: {
@@ -252,6 +296,70 @@ app.post('/mcp', async (req, res) => {
         console.log('✅ Sending success response');
         return res.json(result);
 
+      } else if (name === 'get_ticket') {
+        console.log('🎫 Fetching Freshdesk ticket...');
+        console.log('Domain:', domain);
+        console.log('Ticket ID:', args?.ticket_id);
+        
+        console.log('Making API call to Freshdesk...');
+        const response = await fetch(
+          `https://${domain}/api/v2/tickets/${args.ticket_id}`,
+          {
+            method: 'GET',
+            headers: {
+              'Authorization': `Basic ${authString}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        console.log('Freshdesk API Status:', response.status);
+        const data = await response.json();
+        console.log('Freshdesk Response:', JSON.stringify(data, null, 2));
+        
+        const result = {
+          jsonrpc: '2.0',
+          id: request.id,
+          result: {
+            content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+          },
+        };
+        
+        console.log('✅ Sending success response');
+        return res.json(result);
+
+      } else if (name === 'get_agent') {
+        console.log('👤 Fetching Freshdesk agent...');
+        console.log('Domain:', domain);
+        console.log('Agent ID:', args?.agent_id);
+        
+        console.log('Making API call to Freshdesk...');
+        const response = await fetch(
+          `https://${domain}/api/v2/agents/${args.agent_id}`,
+          {
+            method: 'GET',
+            headers: {
+              'Authorization': `Basic ${authString}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        console.log('Freshdesk API Status:', response.status);
+        const data = await response.json();
+        console.log('Freshdesk Response:', JSON.stringify(data, null, 2));
+        
+        const result = {
+          jsonrpc: '2.0',
+          id: request.id,
+          result: {
+            content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+          },
+        };
+        
+        console.log('✅ Sending success response');
+        return res.json(result);
+
       } else if (name === 'create_ticket') {
         console.log('📞 Creating Freshdesk ticket...');
         console.log('Domain:', domain);
@@ -398,9 +506,11 @@ app.listen(PORT, () => {
   console.log(`   🔗 MCP Endpoint: /mcp`);
   console.log(`   💚 Health: /`);
   console.log(`   🔧 Tools: /tools`);
-  console.log(`   📊 Total Tools: 3`);
+  console.log(`   📊 Total Tools: 5`);
   console.log('   🔹 get_groups - Fetch all groups');
-  console.log('   🔹 create_ticket - Create ticket (with optional group assignment)');
+  console.log('   🔹 get_ticket - Get ticket details');
+  console.log('   🔹 get_agent - Get agent details');
+  console.log('   🔹 create_ticket - Create ticket');
   console.log('   🔹 assign_ticket - Assign existing ticket');
   console.log('═══════════════════════════════════════════');
   console.log('');
